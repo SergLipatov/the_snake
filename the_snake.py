@@ -1,5 +1,7 @@
 """
-Модуль содержащий описание классов,
+Модуль игры Змейка.
+
+Содержащит описание классов,
 функций и игровой механики игры змейка.
 """
 
@@ -46,6 +48,18 @@ pg.display.set_caption('Змейка')
 # Настройка времени:
 clock = pg.time.Clock()
 
+# Словарь для обработки нажатий клавиш
+# (нажатая клавиша, старое направление): новое направление
+KEYBOARD_MAPS = {
+    (pg.K_UP, LEFT): UP,
+    (pg.K_UP, RIGHT): UP,
+    (pg.K_DOWN, LEFT): DOWN,
+    (pg.K_DOWN, RIGHT): DOWN,
+    (pg.K_LEFT, UP): LEFT,
+    (pg.K_LEFT, DOWN): LEFT,
+    (pg.K_RIGHT, UP): RIGHT,
+    (pg.K_RIGHT, DOWN): RIGHT}
+
 
 class GameObject:
     """Базовый класс объектов игры."""
@@ -57,6 +71,7 @@ class GameObject:
 
     def draw():
         """Метод отрисовки игровых объектов."""
+        raise NotImplementedError('Метод переопределяется в наследниках.')
 
 
 class Snake(GameObject):
@@ -101,14 +116,14 @@ class Snake(GameObject):
         real_head_position_y = new_head_position_y % SCREEN_HEIGHT
         self.last = self.positions[-1]
         self.positions.insert(0, (real_head_position_x, real_head_position_y))
-        if len(self.positions) > self.lenght:
-            self.positions.pop(-1)
+        if len(self.positions) > self.length:
+            self.positions.pop()
         else:
             self.last = None
 
     def reset(self):
         """Метод сбрасывающий змейку в начальное состояние."""
-        self.lenght = 1
+        self.length = 1
         self.positions = [BOARD_CЕNTЕR]
         self.last = None
         self.direction = choice((UP, DOWN, RIGHT, LEFT))
@@ -117,30 +132,32 @@ class Snake(GameObject):
 class Apple(GameObject):
     """Класс описывающий поведение яблока."""
 
-    def __init__(self, occupied_cells=[BOARD_CЕNTЕR]):
+    def __init__(self, occupied_cells=None):
         """
         Метод инициализации экземпляров класса Apple.
 
         Args:
-            occupied_cels (list): Список уже занятых ячеек поля
+            occupied_cells (list): Список уже занятых ячеек поля
         Returns:
             None
         """
         super().__init__()
+        if occupied_cells is None:
+            occupied_cells = (BOARD_CЕNTЕR)
         self.body_color = APPLE_COLOR
         self.randomize_position(occupied_cells)
 
-    def randomize_position(self, occupied_cells=[BOARD_CЕNTЕR]):
+    def randomize_position(self, occupied_cells=None):
         """
         Метод устанавливающий случайную позицию яблока из свободных.
 
         Args:
-            occupied_cels (list): Список уже занятых ячеек поля
+            occupied_cells (list): Список уже занятых ячеек поля
         Returns:
             None
         """
-        if not hasattr(occupied_cells, '__iter__'):
-            occupied_cells = [BOARD_CЕNTЕR]
+        if not hasattr(occupied_cells, '__iter__') or occupied_cells is None:
+            occupied_cells = (BOARD_CЕNTЕR)
         while True:
             self.position = (
                 randint(0, GRID_WIDTH - 1) * GRID_SIZE,
@@ -162,14 +179,8 @@ def handle_keys(game_object):
             pg.quit()
             raise SystemExit('Вы вышли из игры.')
         if event.type == pg.KEYDOWN:
-            if event.key == pg.K_UP and game_object.direction != DOWN:
-                game_object.next_direction = UP
-            elif event.key == pg.K_DOWN and game_object.direction != UP:
-                game_object.next_direction = DOWN
-            elif event.key == pg.K_LEFT and game_object.direction != RIGHT:
-                game_object.next_direction = LEFT
-            elif event.key == pg.K_RIGHT and game_object.direction != LEFT:
-                game_object.next_direction = RIGHT
+            game_object.next_direction = KEYBOARD_MAPS.get(
+                (event.key, game_object.direction))
 
 
 def main():
@@ -184,13 +195,13 @@ def main():
         handle_keys(snake)
         snake.update_direction()
         snake.move()
-        head_cels = snake.get_head_position()
-        if snake.positions.count(head_cels) > 1:
+        head_cells = snake.get_head_position()
+        if snake.positions.count(head_cells) > 1:
             snake.reset()
             screen.fill(BOARD_BACKGROUND_COLOR)
             apple.randomize_position(snake.positions)
-        elif head_cels == apple.position:
-            snake.lenght += 1
+        elif head_cells == apple.position:
+            snake.length += 1
             apple.randomize_position(snake.positions)
         apple.draw()
         snake.draw()
